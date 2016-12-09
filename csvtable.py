@@ -46,6 +46,6 @@ class Table(object):
 
 	def insert_tuple(self, cur, tup):
 		if len(tup) != len(self.types):
-			raise ValueError("Invalid tuple")
+			raise ValueError("Invalid tuple " + str(tup))
 
 		cur.execute('INSERT INTO {} VALUES {}'.format(self.name, tuple(tup)))
