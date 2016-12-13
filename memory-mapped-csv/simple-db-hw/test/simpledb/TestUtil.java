@@ -239,6 +239,10 @@ public class TestUtil {
 		public TupleDesc getTupleDesc() {			
 			return td;
 		}
+		
+		public boolean isModified() {
+			return false;
+		}
     }
 
     /**

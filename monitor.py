@@ -23,6 +23,7 @@ class Monitor(object):
 		self.monitor_file_change_in_background()
 
 	def update_db(self):
+		start = time.time() * 1000
 		self.cur.executescript('DROP TABLE IF EXISTS ' + self.filename.strip('.csv') + ';')
 		self.table = None
 		with open(self.filename, 'r') as f:
@@ -38,6 +39,10 @@ class Monitor(object):
 				self.table.insert_tuple(self.cur, r)
 			self.conn.commit()
 
+		elapsed = ((time.time() * 1000) - start)
+		with open("result", 'w') as f:
+			f.write(str(elapsed))
+
 	def monitor_file_change_in_background(self):
 		while True:
 			if os.stat(self.filename).st_mtime > self.last_file_mod:
@@ -50,7 +55,8 @@ class Monitor(object):
 		self.conn = sqlite.connect('csvdb.db')
 		self.cur = self.conn.cursor()
 		for r in self.cur.execute('select * from {}'.format(name)):
-			print r
+			# print r
+			pass
 		print 'test done'
 
 monitor = Monitor()

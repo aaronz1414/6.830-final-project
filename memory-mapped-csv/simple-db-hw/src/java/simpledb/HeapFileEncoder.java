@@ -92,7 +92,9 @@ public class HeapFileEncoder {
       throws IOException {
 
       int nrecbytes = 0;
+//      System.out.println("num fields in converter: " + numFields);
       for (int i = 0; i < numFields ; i++) {
+//    	  System.out.println("i: " + i);
           nrecbytes += typeAr[i].getLen();
       }
       int nrecords = (npagebytes * 8) /  (nrecbytes * 8 + 1);  //floor comes for free

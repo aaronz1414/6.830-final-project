@@ -89,4 +89,6 @@ public interface DbFile {
     public TupleDesc getTupleDesc();
     
     public int numPages();
+    
+    public boolean isModified();
 }

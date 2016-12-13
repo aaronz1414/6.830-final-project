@@ -9,12 +9,15 @@ def randomword():
 def randomdouble():
 	return random.randint(10,1000) * random.random()
 
+def randomint():
+	return random.randint(10, 1000)
+
 def main(args):
 	filename = args[0]
-	with open(filename, 'w') as f:
+	with open(filename, 'wb') as f:
 		writer = csv.writer(f, delimiter=',')
 		for i in xrange(int(args[1])):
-			writer.writerow((randomword(), randomdouble(), randomdouble()))
+			writer.writerow((randomint(), randomint(), randomint()))
 	print 'done'
 
 if __name__ == '__main__':

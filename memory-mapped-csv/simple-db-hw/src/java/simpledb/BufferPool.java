@@ -89,6 +89,12 @@ public class BufferPool {
     	}
     	
     	if (success) {
+    		boolean isModified = Database.getCatalog().getDatabaseFile(pid.getTableId()).isModified();
+    		System.out.println("isModified: " + isModified);
+    		if (isModified) {
+    			discardPage(pid);
+    		}
+    		
     		if (pages.containsKey(pid)) return pages.get(pid);
         	
         	if (pages.size() >= maxNumPages) {

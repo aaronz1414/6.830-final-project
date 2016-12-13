@@ -16,7 +16,10 @@ import java.util.*;
 public class HeapFile implements DbFile {
 	
 	private File file;
+	private File csv;
 	private TupleDesc tupleDesc;
+	private boolean isCsvBacked;
+	private long lastKnownCsvMod;
 
     /**
      * Constructs a heap file backed by the specified file.
@@ -26,8 +29,18 @@ public class HeapFile implements DbFile {
      *            file.
      */
     public HeapFile(File f, TupleDesc td) {
-        file = f;
-        tupleDesc = td;
+    	System.out.println("heap file");
+    	tupleDesc = td;
+    	csv = null;
+    	isCsvBacked = false;
+    	
+    	if (f.getName().contains(".csv")) {
+    		csv = f;
+    		isCsvBacked = true;
+    		reloadFileFromCsv();
+    	} else {
+    		file = f;
+    	}
     }
 
     /**
@@ -37,6 +50,10 @@ public class HeapFile implements DbFile {
      */
     public File getFile() {
         return file;
+    }
+    
+    public boolean isModified() {
+    	return isCsvBacked && csv.lastModified() > lastKnownCsvMod;
     }
 
     /**
@@ -63,6 +80,10 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
+    	if (isCsvBacked && csv.lastModified() > lastKnownCsvMod) {
+    		reloadFileFromCsv();
+    	}
+    	
     	byte[] data = new byte[BufferPool.getPageSize()];
     	
     	try {
@@ -137,6 +158,31 @@ public class HeapFile implements DbFile {
     public DbFileIterator iterator(TransactionId tid) {
     	return new DbFileIteratorImpl(tid);
     }
+    
+    private void reloadFileFromCsv() {
+    	file = convert(csv);
+		lastKnownCsvMod = csv.lastModified();
+    }
+    
+    private File convert(File sourceTxtFile) {
+		try {
+            File targetDatFile=new File(sourceTxtFile.getName().replaceAll(".csv", ".dat"));
+//            System.out.println("num fields: " + tupleDesc.numFields());
+            Type[] ts = new Type[tupleDesc.numFields()];
+            char fieldSeparator=',';
+
+            for (int i=0;i<tupleDesc.numFields();i++)
+                ts[i]=tupleDesc.getFieldType(i);
+
+            HeapFileEncoder.convert(sourceTxtFile,targetDatFile,
+                        BufferPool.getPageSize(),tupleDesc.numFields(),ts,fieldSeparator);
+            return targetDatFile;
+
+        } catch (IOException e) {
+                throw new RuntimeException(e);
+        }
+		
+	}
     
     private class DbFileIteratorImpl extends AbstractDbFileIterator {
     	
