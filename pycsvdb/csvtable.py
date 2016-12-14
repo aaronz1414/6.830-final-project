@@ -1,4 +1,5 @@
 import uuid
+import traceback
 
 TYPE_MAP = {
     str : 'text',
@@ -51,8 +52,37 @@ class Table(object):
     def create_table(self, cur):
         cur.execute(self.create_string())
 
-    def insert_tuple(self, cur, tup):
+    def valid_tup(self, tup):
         if len(tup) != len(self.types):
-            raise ValueError("Invalid tuple " + str(tup))
+            return False
 
-        cur.execute('INSERT INTO {} VALUES {}'.format(self.name, tuple(tup)))
+        for i,v in enumerate(tup):
+            if get_type(v) != self.types[i]:
+                return False
+
+        return True
+
+    def typed_tuple(self, tup):
+        return tuple(self.types[i](v) for i,v in enumerate(tup))
+
+    def insert_tuples(self, cur, batch):
+        sql = ['INSERT INTO {} VALUES'.format(self.name)]
+        for tup in batch:
+            # checking kills performance
+            # if not self.valid_tup(tup):
+            #     raise ValueError("Invalid tuple " + str(tup))
+            sql.append(str(self.typed_tuple(tup)) + ',')
+
+        if len(sql) == 0:
+            return
+
+        # get rid of trailing comma
+        sql[-1] = sql[-1][:-1]
+        sql = ' '.join(sql)
+        cur.execute(sql)
+
+    def insert_tuple(self, cur, tup):
+        if not self.valid_tup(tup):
+            raise ValueError("Invalid tuple " + str(tup))
+        cur.execute('INSERT INTO {} VALUES {}'.format(self.name, self.typed_tuple(tup)))
+

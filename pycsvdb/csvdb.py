@@ -4,24 +4,28 @@ import csv, os, time
 from csvtable import Table
 from monitor import Monitor
 
+import traceback
+
 EXT = '.csv'
 DROP_STATEMENT = 'DROP TABLE IF EXISTS {};'
-DB_NAME = 'csvdb.db'
+DB_NAME = ':memory:'
+BATCH_SIZE = 10000000
 
 # COMMANDS
 COMMAND_SHOW = lambda c: 'show' == c
 COMMAND_DT = lambda c: 'dt' in c
-COMMAND_SQL = lambda c: 'sql' == c
 COMMAND_QUIT = lambda c: 'quit' in c
-COMMAND_SQL_QUIT = lambda c: 'quit' in c
+
+PROMPT = 'csvdb> '
+MESSAGE = """CSVDB Console (directory='{}')
+- Special Commands:
+    - show (show tables)
+    - dt <table name> (shows table schema)
+    - quit (closes terminal)
+"""
 
 class CSVDB(object):
     def __init__(self, filedir):
-        try:
-            os.remove(DB_NAME)
-        except:
-            pass
-
         self.monitor = Monitor(filedir.rstrip('/'), self._file_changed)
         self.tables = dict()
         self.table_paths = dict()
@@ -67,8 +71,7 @@ class CSVDB(object):
         self.cur.execute(DROP_STATEMENT.format(table_name))
         self.create_table(table_name, self.table_paths[table_name])
         reader = self.get_reader(table_name)
-        for r in reader:
-            self.tables[table_name].insert_tuple(self.cur, r)
+        self.tables[table_name].insert_tuples(self.cur, reader)
         self.conn.commit()
         self.tables[table_name].mark_clean()
 
@@ -107,23 +110,26 @@ class CSVDB(object):
 
     def execute_sql(self, sql):
         start = time.time()
-        num_refreshed = self.refresh_tables_for_query(sql)
         try:
+            num_refreshed = self.refresh_tables_for_query(sql)
             rows = self.cur.execute(sql)
         except Exception as e:
-            return '{}: {}'.format(type(e).__name__, e)
-        out = "Output:\n"
+            return '{}: {}'.format(type(e).__name__, e), 0, 0, 0
+        out = ["\n"]
+        num_rows = 0
         for r in rows:
-            out += "{}\n".format(r)
+            out.append("{}\n".format(r))
+            num_rows += 1
+        out = ''.join(out)
         duration = time.time() - start
-        return out, num_refreshed, duration
+        return out, num_rows, num_refreshed, duration
 
     @staticmethod
     def to_table_name(f):
         return f.strip(EXT)
 
 def main(args):
-    print "CSVDB Console (directory='{}')".format(args.csvdir)
+    print MESSAGE.format(args.csvdir)
     db = CSVDB(args.csvdir)
     db.start()
     print 'database started successfully\n'
@@ -132,35 +138,25 @@ def main(args):
     # main loop
     try:
         while True:
-            command = raw_input('Type a command: ')
+            command = raw_input(PROMPT)
             if COMMAND_SHOW(command):
                 print db.show_tables()
             elif COMMAND_DT(command):
                 table_name = command.split(' ')[1]
                 print db.describe_table(table_name)
-            elif COMMAND_SQL(command):
-                try:
-                    while True:
-                        sql = raw_input('Enter query: ')
-                        if COMMAND_SQL_QUIT(sql):
-                            print 'quitting sql mode...'
-                            break
-                        output, tables_refreshed, op_time = db.execute_sql(sql)
-                        print output
-                        print 'Tables reloaded: {}  Total time: {:.4f}s\n'.format(tables_refreshed, op_time)
-                except KeyboardInterrupt:
-                    print '\nquitting sql mode...'
-                except Exception as e:
-                    print e
             elif COMMAND_QUIT(command):
                 print 'terminating...'
                 break
             else:
-                print 'Error: unrecognized command {}'.format(command)
+                output, num_rows, tables_refreshed, op_time = db.execute_sql(command)
+                print output
+                print 'Rows: {} | Tables reloaded: {} | Total time: {:.4f}s\n'\
+                    .format(num_rows, tables_refreshed, op_time)
     except KeyboardInterrupt:
         print '\nterminating...'
     except Exception as e:
         print e
+        # traceback.print_exc()
         print '\nterminating...'
     db.stop()
 
