@@ -13,8 +13,8 @@ BATCH_SIZE = 10000000
 
 # COMMANDS
 COMMAND_SHOW = lambda c: 'show' == c
-COMMAND_DT = lambda c: 'dt' in c
-COMMAND_QUIT = lambda c: 'quit' in c
+COMMAND_DT = lambda c: 'dt' == c.split(' ')[0]
+COMMAND_QUIT = lambda c: 'quit' == c
 
 PROMPT = 'csvdb> '
 MESSAGE = """CSVDB Console (directory='{}')
@@ -142,8 +142,12 @@ def main(args):
             if COMMAND_SHOW(command):
                 print db.show_tables()
             elif COMMAND_DT(command):
-                table_name = command.split(' ')[1]
-                print db.describe_table(table_name)
+                command = command.split(' ')
+                if len(command) > 1:
+                    table_name = command[1]
+                    print db.describe_table(table_name)
+                else:
+                    print 'dt requires a table name...'
             elif COMMAND_QUIT(command):
                 print 'terminating...'
                 break
