@@ -8,14 +8,14 @@ TYPE_MAP = {
 
 def get_type(data):
     try:
-        float(data)
-        return float
+        int(data)
+        return int
     except:
         pass
 
     try:
-        int(data)
-        return int
+        float(data)
+        return float
     except:
         pass
 

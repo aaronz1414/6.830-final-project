@@ -17,7 +17,7 @@ def main(args):
     with open(filename, 'w') as f:
         writer = csv.writer(f, delimiter=',')
         for i in xrange(int(args[1])):
-            writer.writerow((randomword(), randomdouble(), randomint()))
+            writer.writerow((randomint(), randomdouble(), randomword()))
     print 'done'
 
 if __name__ == '__main__':
