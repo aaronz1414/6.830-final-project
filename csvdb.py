@@ -8,6 +8,13 @@ EXT = '.csv'
 DROP_STATEMENT = 'DROP TABLE IF EXISTS {};'
 DB_NAME = 'csvdb.db'
 
+# COMMANDS
+COMMAND_SHOW = lambda c: 'show' == c
+COMMAND_DT = lambda c: 'dt' in c
+COMMAND_SQL = lambda c: 'sql' == c
+COMMAND_QUIT = lambda c: 'quit' in c
+COMMAND_SQL_QUIT = lambda c: 'quit' in c
+
 class CSVDB(object):
     def __init__(self, filedir):
         try:
@@ -56,16 +63,27 @@ class CSVDB(object):
         for i,f in enumerate(files):
             self.create_table(CSVDB.to_table_name(f), paths[i])
 
-    def update_db(self):
-        for table_name, table in self.tables.iteritems():
-            if table.dirty:
-                self.cur.execute(DROP_STATEMENT.format(table_name))
-                self.create_table(table_name, self.table_paths[table_name])
-                reader = self.get_reader(table_name)
-                for r in reader:
-                    self.table.insert_tuple(self.cur, r)
-                self.conn.commit()
-                table.mark_clean()
+    def _load_data(self, table_name):
+        self.cur.execute(DROP_STATEMENT.format(table_name))
+        self.create_table(table_name, self.table_paths[table_name])
+        reader = self.get_reader(table_name)
+        for r in reader:
+            self.tables[table_name].insert_tuple(self.cur, r)
+        self.conn.commit()
+        self.tables[table_name].mark_clean()
+
+    def refresh_table_or_tables(self, table_name_or_names):
+        if isinstance(table_name_or_names, str):
+            self._load_data(table_name_or_names)
+        else:
+            for name in table_name_or_names: self._load_data(name)
+
+    def refresh_tables_for_query(self, sql):
+        tables_to_refresh = set()
+        for table_name in self.tables:
+            if table_name in sql and self.tables[table_name].dirty:
+                tables_to_refresh.add(table_name)
+        self.refresh_table_or_tables(tables_to_refresh)
 
     def get_reader(self, table_name):
         return csv.reader(open(self.table_paths[table_name], 'r'), delimiter=',')
@@ -86,6 +104,14 @@ class CSVDB(object):
             out += "{}\n".format(pair)
         return out
 
+    def execute_sql(self, sql):
+        self.refresh_tables_for_query(sql)
+        rows = self.cur.execute(sql)
+        out = "Output:\n"
+        for r in rows:
+            out += "{}\n".format(r)
+        return out
+
     @staticmethod
     def to_table_name(f):
         return f.strip(EXT)
@@ -101,18 +127,33 @@ def main(args):
     try:
         while True:
             command = raw_input('Type a command: ')
-            if 'show' in command:
+            if COMMAND_SHOW(command):
                 print db.show_tables()
-            elif 'dt' in command:
+            elif COMMAND_DT(command):
                 table_name = command.split(' ')[1]
                 print db.describe_table(table_name)
+            elif COMMAND_SQL(command):
+                try:
+                    while True:
+                        sql = raw_input('Enter query: ')
+                        if COMMAND_SQL_QUIT(sql):
+                            print 'quitting sql mode...'
+                            break
+                        print db.execute_sql(sql)
+                except KeyboardInterrupt:
+                    print '\nquitting sql mode...'
+                except Exception as e:
+                    print 'Error: {}'.format(e.value)
+            elif COMMAND_QUIT(command):
+                print 'terminating...'
+                break
             else:
                 print 'Error: unrecognized command {}'.format(command)
     except KeyboardInterrupt:
-        print '\nterminating'
+        print '\nterminating...'
     except Exception as e:
-        print '\n\n',e
-        print '\nterminating'
+        print '\n\n', e.value
+        print '\nterminating...'
     # test(db)
     db.stop()
 

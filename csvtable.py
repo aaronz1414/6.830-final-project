@@ -2,7 +2,7 @@ import uuid
 
 TYPE_MAP = {
     str : 'text',
-    int : 'real',
+    int : 'int',
     float : 'real'
 }
 
@@ -27,16 +27,16 @@ class Table(object):
         self.name = name or str(uuid.uuid4())
         self.colnames = colnames if colnames else tuple([self.name + '_' + str(i)
             for i in xrange(len(self.types))])
-        self.dirty = False
+        self.dirty = True
 
     def __str__(self):
         return "<" + self.name + " : " + str(self.colnames) + ">"
 
     def mark_dirty(self):
-        self.dirty = False
+        self.dirty = True
 
     def mark_clean(self):
-        self.dirty = True
+        self.dirty = False
 
     def create_string(self):
         type_str = '('
