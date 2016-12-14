@@ -28,5 +28,30 @@ public class CsvPageId implements PageId {
 	public int getPageNumber() {
 		return pageNumber;
 	}
+	
+	/**
+     * @return a hash code for this page, represented by the concatenation of
+     *   the table number and the page number (needed if a PageId is used as a
+     *   key in a hash table in the BufferPool, for example.)
+     * @see BufferPool
+     */
+    public int hashCode() {
+        return tableId * 97 + pageNumber * 103;
+    }
+
+    /**
+     * Compares one PageId to another.
+     *
+     * @param o The object to compare against (must be a PageId)
+     * @return true if the objects are equal (e.g., page numbers and table
+     *   ids are the same)
+     */
+    public boolean equals(Object o) {
+        if (!(o instanceof PageId)) return false;
+        
+        PageId pageId = (PageId) o;
+        
+        return tableId == pageId.getTableId() && pageNumber == pageId.getPageNumber();
+    }
 
 }

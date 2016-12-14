@@ -84,6 +84,8 @@ public class HeapFile implements DbFile {
     		reloadFileFromCsv();
     	}
     	
+//    	System.out.println("reading page");
+    	
     	byte[] data = new byte[BufferPool.getPageSize()];
     	
     	try {
@@ -91,6 +93,7 @@ public class HeapFile implements DbFile {
 			randomAccessFile.seek(pid.getPageNumber() * BufferPool.getPageSize());
 			randomAccessFile.read(data);
 			randomAccessFile.close();
+			
 			return new HeapPage(new HeapPageId(getId(), pid.getPageNumber()), data);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

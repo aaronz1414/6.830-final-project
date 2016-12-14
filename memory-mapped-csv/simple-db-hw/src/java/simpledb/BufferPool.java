@@ -90,10 +90,12 @@ public class BufferPool {
     	
     	if (success) {
     		boolean isModified = Database.getCatalog().getDatabaseFile(pid.getTableId()).isModified();
-    		System.out.println("isModified: " + isModified);
+//    		System.out.println("isModified: " + isModified);
     		if (isModified) {
     			discardPage(pid);
     		}
+    		
+//    		System.out.println("Pages in buffer: " + pages.size());
     		
     		if (pages.containsKey(pid)) return pages.get(pid);
         	
@@ -254,6 +256,7 @@ public class BufferPool {
     */
     public synchronized void discardPage(PageId pid) {
         pages.remove(pid);
+        pageOrder.remove(pid);
     }
 
     /**

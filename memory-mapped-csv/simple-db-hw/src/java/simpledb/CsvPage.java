@@ -63,5 +63,13 @@ public class CsvPage implements Page {
 	public Iterator<Tuple> iterator() {
 		return tuples.iterator();
 	}
+	
+	public int numTuples() {
+		return tuples.size();
+	}
+
+	public void insertTuple(Tuple t) {
+		tuples.add(t);
+	}
 
 }
