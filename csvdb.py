@@ -154,15 +154,7 @@ def main(args):
     except Exception as e:
         print '\n\n', e.value
         print '\nterminating...'
-    # test(db)
     db.stop()
-
-def test(db):
-    conn = sqlite.connect(DB_NAME)
-    cur = conn.cursor()
-    for r in cur.execute('select * from {}'.format(db.table.name)):
-        print r
-    print 'test done'
 
 if __name__ == '__main__':
     import argparse
