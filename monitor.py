@@ -6,58 +6,46 @@ from csvtable import Table
 
 class Monitor(object):
 
-	def __init__(self):
-		os.remove('csvdb.db')
-		self.conn = sqlite.connect('csvdb.db')
-		self.cur = self.conn.cursor()
-		self.filename = ''
-		self.table = None
-		self.last_file_mod = 0
+    def __init__(self, filedir, callback, extension='.csv'):
+        """Initialize monitor
 
-	def run(self):
-		self.filename = raw_input("Enter the path to your csv: ")
-		self.update_db()
-		self.test(self.table.name)
+        Args:
+            filedir (str): the directory to monitor (no trailing slash)
+            callback (func): the function that should be called
+                when a file in filedir changes
+            extension (str, optional): the extension of files to monitor
+        """
+        self.filedir = filedir
+        self.callback = callback
+        self.extension = extension
+        self.kill = False
 
-		self.last_file_mod = os.stat(self.filename).st_mtime
-		self.monitor_file_change_in_background()
+        self.file_mods = None
 
-	def update_db(self):
-		start = time.time() * 1000
-		self.cur.executescript('DROP TABLE IF EXISTS ' + self.filename.strip('.csv') + ';')
-		self.table = None
-		with open(self.filename, 'r') as f:
-			reader = csv.reader(f, delimiter=',')
-			for r in reader:
-				if not self.table:
-					self.table = Table(r, name=self.filename.strip('.csv'))
-					self.table.create_table(self.cur)
-					self.conn.commit()
-				
-				if len(r) == 0:
-					continue
-				self.table.insert_tuple(self.cur, r)
-			self.conn.commit()
+    def get_files(self):
+        return filter(lambda f: self.extension in f, os.listdir(self.filedir))
 
-		elapsed = ((time.time() * 1000) - start)
-		with open("result", 'w') as f:
-			f.write(str(elapsed))
+    def _to_path(self, f):
+        return self.filedir + '/' + f
 
-	def monitor_file_change_in_background(self):
-		while True:
-			if os.stat(self.filename).st_mtime > self.last_file_mod:
-				self.last_file_mod = os.stat(self.filename).st_mtime
-				self.update_db()
-			time.sleep(1)
+    def get_abs_paths(self):
+        return map(lambda f: self._to_path(f), self.get_files())
 
+    def get_last_mod(self, f):
+        return self.file_mods.get(f, None)
 
-	def test(self, name):
-		self.conn = sqlite.connect('csvdb.db')
-		self.cur = self.conn.cursor()
-		for r in self.cur.execute('select * from {}'.format(name)):
-			# print r
-			pass
-		print 'test done'
+    def run(self):
+        self.file_mods = {f: os.stat(self._to_path(f)).st_mtime for f in self.get_files()}
+        Thread(target=self.monitor_directory).start()
 
-monitor = Monitor()
-monitor.run()
+    def stop(self):
+        self.kill = True
+
+    def monitor_directory(self):
+        while not self.kill:
+            for f in self.get_files():
+                mod_time = os.stat(self._to_path(f)).st_mtime
+                if f not in self.file_mods or mod_time > self.file_mods[f]:
+                    self.file_mods[f] = mod_time
+                    self.callback(f, self._to_path(f), mod_time)
+            time.sleep(1)
