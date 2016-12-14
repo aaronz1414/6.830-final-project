@@ -84,6 +84,7 @@ class CSVDB(object):
             if table_name in sql and self.tables[table_name].dirty:
                 tables_to_refresh.add(table_name)
         self.refresh_table_or_tables(tables_to_refresh)
+        return len(tables_to_refresh)
 
     def get_reader(self, table_name):
         return csv.reader(open(self.table_paths[table_name], 'r'), delimiter=',')
@@ -105,12 +106,17 @@ class CSVDB(object):
         return out
 
     def execute_sql(self, sql):
-        self.refresh_tables_for_query(sql)
-        rows = self.cur.execute(sql)
+        start = time.time()
+        num_refreshed = self.refresh_tables_for_query(sql)
+        try:
+            rows = self.cur.execute(sql)
+        except Exception as e:
+            return '{}: {}'.format(type(e).__name__, e)
         out = "Output:\n"
         for r in rows:
             out += "{}\n".format(r)
-        return out
+        duration = time.time() - start
+        return out, num_refreshed, duration
 
     @staticmethod
     def to_table_name(f):
@@ -139,11 +145,13 @@ def main(args):
                         if COMMAND_SQL_QUIT(sql):
                             print 'quitting sql mode...'
                             break
-                        print db.execute_sql(sql)
+                        output, tables_refreshed, op_time = db.execute_sql(sql)
+                        print output
+                        print 'Tables reloaded: {}  Total time: {:.4f}s\n'.format(tables_refreshed, op_time)
                 except KeyboardInterrupt:
                     print '\nquitting sql mode...'
                 except Exception as e:
-                    print 'Error: {}'.format(e.value)
+                    print e
             elif COMMAND_QUIT(command):
                 print 'terminating...'
                 break
@@ -152,7 +160,7 @@ def main(args):
     except KeyboardInterrupt:
         print '\nterminating...'
     except Exception as e:
-        print '\n\n', e.value
+        print e
         print '\nterminating...'
     db.stop()
 
