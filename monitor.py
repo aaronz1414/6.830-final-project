@@ -5,6 +5,7 @@ from threading import Thread
 from csvtable import Table
 
 class Monitor(object):
+
     def __init__(self, filedir, callback, extension='.csv'):
         """Initialize monitor
 
